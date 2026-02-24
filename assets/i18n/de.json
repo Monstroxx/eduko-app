@@ -1,0 +1,87 @@
+{
+  "app_name": "Eduko",
+  "nav": {
+    "timetable": "Stundenplan",
+    "substitutions": "Vertretung",
+    "attendance": "Anwesenheit",
+    "excuses": "Entschuldigung",
+    "profile": "Profil"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "server_url": "Server URL",
+    "connect": "Verbinden",
+    "login_failed": "Anmeldung fehlgeschlagen"
+  },
+  "timetable": {
+    "title": "Stundenplan",
+    "today": "Heute",
+    "day_view": "Tagesansicht",
+    "week_view": "Wochenansicht",
+    "no_lessons": "Keine Stunden"
+  },
+  "attendance": {
+    "title": "Anwesenheit",
+    "present": "Anwesend",
+    "absent": "Abwesend",
+    "late": "Verspätet",
+    "excused_leave": "Beurlaubt",
+    "save": "Speichern",
+    "select_class": "Klasse auswählen",
+    "select_period": "Stunde auswählen"
+  },
+  "excuses": {
+    "title": "Entschuldigungen",
+    "create": "Neue Entschuldigung",
+    "pending": "Ausstehend",
+    "approved": "Entschuldigt",
+    "rejected": "Abgelehnt",
+    "submit_digital": "Digital einreichen",
+    "submit_paper": "Als Papier eingereicht markieren",
+    "download_pdf": "Formular als PDF herunterladen",
+    "date_from": "Von",
+    "date_to": "Bis",
+    "reason": "Grund",
+    "approve": "Genehmigen",
+    "reject": "Ablehnen",
+    "paper_received": "Papier erhalten",
+    "select_period": "Zeitraum auswählen",
+    "deadline_exceeded": "Abgabefrist überschritten",
+    "attestation_required": "Attest erforderlich"
+  },
+  "substitutions": {
+    "title": "Vertretungsplan",
+    "substitution": "Vertretung",
+    "cancellation": "Entfall",
+    "room_change": "Raumänderung"
+  },
+  "lessons": {
+    "title": "Lehrstoff",
+    "topic": "Thema",
+    "homework": "Hausaufgaben"
+  },
+  "profile": {
+    "title": "Profil",
+    "unexcused_absences": "Unentschuldigte Fehlstunden",
+    "pending_excuses": "Ausstehende Entschuldigungen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "theme": "Design",
+    "about": "Über Eduko"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "back": "Zurück",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "no_data": "Keine Daten vorhanden"
+  }
+}

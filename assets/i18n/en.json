@@ -1,0 +1,87 @@
+{
+  "app_name": "Eduko",
+  "nav": {
+    "timetable": "Timetable",
+    "substitutions": "Substitutions",
+    "attendance": "Attendance",
+    "excuses": "Excuses",
+    "profile": "Profile"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "server_url": "Server URL",
+    "connect": "Connect",
+    "login_failed": "Login failed"
+  },
+  "timetable": {
+    "title": "Timetable",
+    "today": "Today",
+    "day_view": "Day View",
+    "week_view": "Week View",
+    "no_lessons": "No lessons"
+  },
+  "attendance": {
+    "title": "Attendance",
+    "present": "Present",
+    "absent": "Absent",
+    "late": "Late",
+    "excused_leave": "Excused Leave",
+    "save": "Save",
+    "select_class": "Select class",
+    "select_period": "Select period"
+  },
+  "excuses": {
+    "title": "Excuses",
+    "create": "New Excuse",
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "submit_digital": "Submit digitally",
+    "submit_paper": "Mark as paper submitted",
+    "download_pdf": "Download form as PDF",
+    "date_from": "From",
+    "date_to": "To",
+    "reason": "Reason",
+    "approve": "Approve",
+    "reject": "Reject",
+    "paper_received": "Paper received",
+    "select_period": "Select period",
+    "deadline_exceeded": "Deadline exceeded",
+    "attestation_required": "Medical certificate required"
+  },
+  "substitutions": {
+    "title": "Substitutions",
+    "substitution": "Substitution",
+    "cancellation": "Cancellation",
+    "room_change": "Room Change"
+  },
+  "lessons": {
+    "title": "Lesson Content",
+    "topic": "Topic",
+    "homework": "Homework"
+  },
+  "profile": {
+    "title": "Profile",
+    "unexcused_absences": "Unexcused absences",
+    "pending_excuses": "Pending excuses"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "about": "About Eduko"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "loading": "Loading...",
+    "error": "Error",
+    "no_data": "No data available"
+  }
+}
