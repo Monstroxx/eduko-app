@@ -1,4 +1,5 @@
 /// Barrel file for all models.
+library;
 export 'timetable_entry.dart';
 export 'attendance.dart';
 export 'excuse.dart';

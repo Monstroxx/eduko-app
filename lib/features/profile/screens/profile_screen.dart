@@ -52,18 +52,18 @@ class ProfileScreen extends ConsumerWidget {
 
           // Quick stats for students
           if (auth.isStudent) ...[
-            Card(
+            const Card(
               child: ListTile(
-                leading: const Icon(Icons.warning_amber, color: Colors.orange),
-                title: const Text('Unentschuldigte Fehlstunden'),
-                trailing: const Text('0'), // TODO: from provider
+                leading: Icon(Icons.warning_amber, color: Colors.orange),
+                title: Text('Unentschuldigte Fehlstunden'),
+                trailing: Text('0'), // TODO: from provider
               ),
             ),
-            Card(
+            const Card(
               child: ListTile(
-                leading: const Icon(Icons.pending_outlined),
-                title: const Text('Ausstehende Entschuldigungen'),
-                trailing: const Text('0'), // TODO: from provider
+                leading: Icon(Icons.pending_outlined),
+                title: Text('Ausstehende Entschuldigungen'),
+                trailing: Text('0'), // TODO: from provider
               ),
             ),
           ],

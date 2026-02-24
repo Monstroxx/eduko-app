@@ -40,10 +40,10 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
 
           // Server info
-          ListTile(
-            leading: const Icon(Icons.dns_outlined),
-            title: const Text('Server'),
-            subtitle: const Text('TODO: show connected server URL'),
+          const ListTile(
+            leading: Icon(Icons.dns_outlined),
+            title: Text('Server'),
+            subtitle: Text('TODO: show connected server URL'),
           ),
 
           // About

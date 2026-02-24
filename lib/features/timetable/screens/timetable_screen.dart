@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../widgets/timetable_day_view.dart';
 import '../widgets/timetable_week_view.dart';
 

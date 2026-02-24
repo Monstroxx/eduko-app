@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/models/excuse.dart';
-import '../../../core/theme/app_theme.dart';
 
 class ExcusesScreen extends ConsumerWidget {
   const ExcusesScreen({super.key});
@@ -30,7 +29,7 @@ class ExcusesScreen extends ConsumerWidget {
         ),
         body: auth.isStudent
             ? _StudentExcuseList()
-            : TabBarView(
+            : const TabBarView(
                 children: [
                   _ExcuseList(status: ExcuseStatus.pending),
                   _ExcuseList(status: ExcuseStatus.approved),
