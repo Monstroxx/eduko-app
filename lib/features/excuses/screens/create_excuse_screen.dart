@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/providers/excuse_provider.dart';
+
 class CreateExcuseScreen extends ConsumerStatefulWidget {
   const CreateExcuseScreen({super.key});
 
@@ -15,6 +17,7 @@ class _CreateExcuseScreenState extends ConsumerState<CreateExcuseScreen> {
   DateTime? _dateTo;
   String _submissionType = 'digital';
   final _reasonController = TextEditingController();
+  bool _attestation = false;
   bool _loading = false;
 
   final _dateFormat = DateFormat('dd.MM.yyyy');
@@ -22,9 +25,7 @@ class _CreateExcuseScreenState extends ConsumerState<CreateExcuseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Entschuldigung erstellen'),
-      ),
+      appBar: AppBar(title: const Text('Entschuldigung erstellen')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -63,15 +64,23 @@ class _CreateExcuseScreenState extends ConsumerState<CreateExcuseScreen> {
             const SizedBox(height: 24),
 
             // Submission type
-            Text('Einreichungsart', style: Theme.of(context).textTheme.titleSmall),
+            Text('Einreichungsart',
+                style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
             SegmentedButton<String>(
               segments: const [
-                ButtonSegment(value: 'digital', label: Text('Digital'), icon: Icon(Icons.send)),
-                ButtonSegment(value: 'paper', label: Text('Papier'), icon: Icon(Icons.print)),
+                ButtonSegment(
+                    value: 'digital',
+                    label: Text('Digital'),
+                    icon: Icon(Icons.send)),
+                ButtonSegment(
+                    value: 'paper',
+                    label: Text('Papier'),
+                    icon: Icon(Icons.print)),
               ],
               selected: {_submissionType},
-              onSelectionChanged: (s) => setState(() => _submissionType = s.first),
+              onSelectionChanged: (s) =>
+                  setState(() => _submissionType = s.first),
             ),
 
             const SizedBox(height: 24),
@@ -86,19 +95,19 @@ class _CreateExcuseScreenState extends ConsumerState<CreateExcuseScreen> {
               maxLines: 3,
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
 
-            // Actions
-            if (_submissionType == 'paper') ...[
-              OutlinedButton.icon(
-                onPressed: () {
-                  // TODO: generate and download PDF
-                },
-                icon: const Icon(Icons.download),
-                label: const Text('Formular als PDF herunterladen'),
-              ),
-              const SizedBox(height: 12),
-            ],
+            // Attestation toggle
+            SwitchListTile(
+              title: const Text('Attest vorhanden'),
+              subtitle: const Text('Ärztliches Attest liegt bei'),
+              value: _attestation,
+              onChanged: (v) => setState(() => _attestation = v),
+              secondary: const Icon(Icons.medical_information_outlined),
+              contentPadding: EdgeInsets.zero,
+            ),
+
+            const SizedBox(height: 32),
 
             FilledButton(
               onPressed: _loading ? null : _submit,
@@ -121,8 +130,10 @@ class _CreateExcuseScreenState extends ConsumerState<CreateExcuseScreen> {
   Future<void> _pickDate({required bool isFrom}) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: isFrom ? (_dateFrom ?? DateTime.now()) : (_dateTo ?? DateTime.now()),
-      firstDate: DateTime.now().subtract(const Duration(days: 30)), // respect deadline
+      initialDate: isFrom
+          ? (_dateFrom ?? DateTime.now())
+          : (_dateTo ?? DateTime.now()),
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
       lastDate: DateTime.now(),
     );
     if (picked != null) {
@@ -132,7 +143,9 @@ class _CreateExcuseScreenState extends ConsumerState<CreateExcuseScreen> {
           if (_dateTo != null && _dateTo!.isBefore(picked)) _dateTo = picked;
         } else {
           _dateTo = picked;
-          if (_dateFrom != null && _dateFrom!.isAfter(picked)) _dateFrom = picked;
+          if (_dateFrom != null && _dateFrom!.isAfter(picked)) {
+            _dateFrom = picked;
+          }
         }
       });
     }
@@ -148,8 +161,25 @@ class _CreateExcuseScreenState extends ConsumerState<CreateExcuseScreen> {
 
     setState(() => _loading = true);
     try {
-      // TODO: call API to create excuse
-      if (mounted) context.pop();
+      final actions = ref.read(excuseActionsProvider);
+      // studentId comes from auth — the backend resolves user→student.
+      // We pass empty string; the backend handler uses the JWT user_id.
+      await actions.create(
+        studentId: '', // resolved server-side
+        dateFrom: _dateFrom!,
+        dateTo: _dateTo!,
+        submissionType: _submissionType,
+        reason: _reasonController.text.isNotEmpty
+            ? _reasonController.text
+            : null,
+        attestationProvided: _attestation,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Entschuldigung eingereicht')),
+        );
+        context.pop();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

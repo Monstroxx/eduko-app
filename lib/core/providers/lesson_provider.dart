@@ -1,22 +1,39 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_service.dart';
+import '../database/app_database.dart';
+import '../database/sync_service.dart';
 import '../models/lesson_content.dart';
 
 /// Filter: class for lessons view.
 final lessonClassFilterProvider = StateProvider<String?>((ref) => null);
 
-/// Lesson content entries.
+/// Lesson content — offline-first.
 final lessonsProvider =
     FutureProvider.autoDispose<List<LessonContent>>((ref) async {
-  final api = ref.watch(apiServiceProvider);
-  final classId = ref.watch(lessonClassFilterProvider);
+  final db = ref.watch(appDatabaseProvider);
+  final sync = ref.watch(syncServiceProvider);
 
-  final response = await api.getLessons(classId: classId);
+  sync.syncLessons().ignore();
 
-  final list = response.data as List;
-  return list.map((e) => LessonContent.fromJson(e as Map<String, dynamic>)).toList();
+  final cached = await db.getAllLessons();
+  if (cached.isEmpty) {
+    await sync.syncLessons(force: true);
+    final fresh = await db.getAllLessons();
+    return fresh.map(_fromCached).toList();
+  }
+  return cached.map(_fromCached).toList();
 });
+
+LessonContent _fromCached(CachedLesson c) => LessonContent(
+      id: c.id,
+      timetableEntryId: c.timetableEntryId,
+      date: c.date,
+      topic: c.topic,
+      homework: c.homework,
+      notes: c.notes,
+      recordedBy: c.recordedBy,
+    );
 
 class LessonActions {
   final Ref ref;
@@ -37,12 +54,14 @@ class LessonActions {
       if (homework != null) 'homework': homework,
       if (notes != null) 'notes': notes,
     });
+    await ref.read(syncServiceProvider).syncLessons(force: true);
     ref.invalidate(lessonsProvider);
   }
 
   Future<void> update(String id, Map<String, dynamic> data) async {
     final api = ref.read(apiServiceProvider);
     await api.updateLesson(id, data);
+    await ref.read(syncServiceProvider).syncLessons(force: true);
     ref.invalidate(lessonsProvider);
   }
 }
