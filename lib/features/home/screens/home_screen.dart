@@ -27,6 +27,11 @@ class HomeScreen extends ConsumerWidget {
   List<NavigationDestination> _destinations(String role) {
     final items = <NavigationDestination>[
       const NavigationDestination(
+        icon: Icon(Icons.dashboard_outlined),
+        selectedIcon: Icon(Icons.dashboard),
+        label: 'Übersicht',
+      ),
+      const NavigationDestination(
         icon: Icon(Icons.calendar_today_outlined),
         selectedIcon: Icon(Icons.calendar_today),
         label: 'Stundenplan',
@@ -63,12 +68,12 @@ class HomeScreen extends ConsumerWidget {
 
   int _selectedIndex(String location, String role) {
     final routes = _routes(role);
-    final idx = routes.indexWhere((r) => location.startsWith(r));
+    final idx = routes.indexWhere((r) => location == r || (r != '/' && location.startsWith(r)));
     return idx >= 0 ? idx : 0;
   }
 
   List<String> _routes(String role) {
-    final r = ['/timetable', '/substitutions'];
+    final r = ['/', '/timetable', '/substitutions'];
     if (role == 'teacher' || role == 'admin') r.add('/attendance');
     r.addAll(['/excuses', '/profile']);
     return r;

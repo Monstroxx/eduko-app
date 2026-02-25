@@ -6,6 +6,7 @@ import '../auth/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/server_setup_screen.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/timetable/screens/timetable_screen.dart';
 import '../../features/attendance/screens/attendance_screen.dart';
 import '../../features/excuses/screens/excuses_screen.dart';
@@ -52,7 +53,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/',
-            redirect: (context, state) => '/timetable',
+            builder: (context, state) => const DashboardScreen(),
           ),
           GoRoute(
             path: '/timetable',
