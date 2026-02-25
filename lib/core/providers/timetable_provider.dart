@@ -1,32 +1,54 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../api/api_service.dart';
-import '../auth/auth_provider.dart';
+import '../database/app_database.dart';
+import '../database/sync_service.dart';
 import '../models/timetable_entry.dart';
 
 /// Selected date for timetable views.
 final timetableSelectedDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
 
-/// Timetable entries for the current user's class/teacher role.
+/// Timetable entries — offline-first: reads from local DB, syncs in background.
 final timetableEntriesProvider =
     FutureProvider.autoDispose<List<TimetableEntry>>((ref) async {
-  final api = ref.watch(apiServiceProvider);
-  final auth = ref.watch(authProvider);
+  final db = ref.watch(appDatabaseProvider);
+  final sync = ref.watch(syncServiceProvider);
 
-  final queryParams = <String, String>{};
-  if (auth.role == 'teacher') {
-    queryParams['teacher_id'] = auth.userId!;
+  // Trigger background sync (non-blocking).
+  sync.syncTimetable().ignore();
+
+  // Read from local DB.
+  final cached = await db.getAllTimetableEntries();
+
+  if (cached.isEmpty) {
+    // First load — wait for sync.
+    await sync.syncTimetable(force: true);
+    final fresh = await db.getAllTimetableEntries();
+    return fresh.map(_fromCached).toList();
   }
-  // Students and admins get all entries for their context (server filters by school).
 
-  final response = await api.getTimetable(
-    classId: queryParams['class_id'],
-    teacherId: queryParams['teacher_id'],
-  );
-
-  final list = response.data as List;
-  return list.map((e) => TimetableEntry.fromJson(e as Map<String, dynamic>)).toList();
+  return cached.map(_fromCached).toList();
 });
+
+TimetableEntry _fromCached(CachedTimetableEntry c) => TimetableEntry(
+      id: c.id,
+      classId: c.classId,
+      subjectId: c.subjectId,
+      teacherId: c.teacherId,
+      roomId: c.roomId,
+      timeSlotId: c.timeSlotId,
+      dayOfWeek: c.dayOfWeek,
+      weekType: WeekType.values.firstWhere(
+        (w) => w.name == c.weekType,
+        orElse: () => WeekType.all,
+      ),
+      subjectName: c.subjectName,
+      subjectAbbreviation: c.subjectAbbreviation,
+      subjectColor: c.subjectColor,
+      teacherName: c.teacherName,
+      teacherAbbreviation: c.teacherAbbreviation,
+      roomName: c.roomName,
+      className: c.className,
+    );
 
 /// Entries grouped by day of week (1=Mon..5=Fri).
 final timetableByDayProvider =
@@ -36,7 +58,6 @@ final timetableByDayProvider =
     for (final e in entries) {
       map.putIfAbsent(e.dayOfWeek, () => []).add(e);
     }
-    // Sort each day by timeSlotId (server should return ordered, but just in case).
     for (final day in map.values) {
       day.sort((a, b) => a.timeSlotId.compareTo(b.timeSlotId));
     }
