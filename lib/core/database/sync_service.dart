@@ -19,6 +19,7 @@ class SyncService {
   Future<void> syncAll() async {
     await Future.wait([
       syncTimetable(),
+      syncSubstitutions(),
       syncSubjects(),
       syncRooms(),
       syncTimeSlots(),
@@ -60,6 +61,37 @@ class SyncService {
       teacherAbbreviation: Value(e.teacherAbbreviation),
       roomName: Value(e.roomName),
       className: Value(e.className),
+    )).toList());
+  }
+
+  // ── Substitutions ──
+
+  Future<void> syncSubstitutions({DateTime? date, bool force = false}) async {
+    if (!force && !await _needsSync('substitutions')) return;
+    final d = date ?? DateTime.now();
+    final dateStr = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    final response = await _api.getSubstitutions(date: dateStr);
+    final data = response.data;
+    final list = data is List
+        ? data.map((e) => Substitution.fromJson(e as Map<String, dynamic>)).toList()
+        : <Substitution>[];
+
+    await _db.replaceSubstitutions(list.map((e) => CachedSubstitutionsCompanion(
+      id: Value(e.id),
+      timetableEntryId: Value(e.timetableEntryId),
+      date: Value(e.date),
+      type: Value(e.type.name),
+      substituteTeacherId: Value(e.substituteTeacherId),
+      substituteRoomId: Value(e.substituteRoomId),
+      substituteSubjectId: Value(e.substituteSubjectId),
+      note: Value(e.note),
+      originalSubject: Value(e.originalSubject),
+      originalTeacher: Value(e.originalTeacher),
+      originalRoom: Value(e.originalRoom),
+      substituteTeacherName: Value(e.substituteTeacherName),
+      substituteRoomName: Value(e.substituteRoomName),
+      className: Value(e.className),
+      timeSlotLabel: Value(e.timeSlotLabel),
     )).toList());
   }
 

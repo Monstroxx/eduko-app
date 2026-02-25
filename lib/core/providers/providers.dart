@@ -9,3 +9,4 @@ export 'lesson_provider.dart';
 export 'appointment_provider.dart';
 export 'class_provider.dart';
 export 'reference_data_provider.dart';
+export 'connectivity_provider.dart';

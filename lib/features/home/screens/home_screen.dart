@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/auth_provider.dart';
+import '../../../core/providers/connectivity_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   final Widget child;
@@ -14,8 +15,21 @@ class HomeScreen extends ConsumerWidget {
     final auth = ref.watch(authProvider);
     final location = GoRouterState.of(context).matchedLocation;
 
+    final isOnline = ref.watch(isOnlineProvider);
+
     return Scaffold(
-      body: child,
+      body: Column(
+        children: [
+          if (!isOnline)
+            MaterialBanner(
+              content: const Text('Offline — Daten aus lokalem Cache'),
+              leading: const Icon(Icons.cloud_off, color: Colors.orange),
+              backgroundColor: Colors.orange.shade50,
+              actions: [const SizedBox.shrink()],
+            ),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex(location, auth.role ?? 'student'),
         onDestinationSelected: (i) => _onTap(context, i, auth.role ?? 'student'),

@@ -1,20 +1,48 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../api/api_service.dart';
+import '../database/app_database.dart';
+import '../database/sync_service.dart';
 import '../models/substitution.dart';
 
-/// Selected date range for substitutions.
+/// Selected date for substitutions.
 final substitutionDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
 
-/// Substitutions for the selected date.
+/// Substitutions — offline-first.
 final substitutionsProvider =
     FutureProvider.autoDispose<List<Substitution>>((ref) async {
-  final api = ref.watch(apiServiceProvider);
+  final db = ref.watch(appDatabaseProvider);
+  final sync = ref.watch(syncServiceProvider);
   final date = ref.watch(substitutionDateProvider);
 
-  final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  final response = await api.getSubstitutions(date: dateStr);
+  // Background sync.
+  sync.syncSubstitutions(date: date).ignore();
 
-  final list = response.data as List;
-  return list.map((e) => Substitution.fromJson(e as Map<String, dynamic>)).toList();
+  final cached = await db.getSubstitutionsByDate(date);
+  if (cached.isEmpty) {
+    await sync.syncSubstitutions(date: date, force: true);
+    final fresh = await db.getSubstitutionsByDate(date);
+    return fresh.map(_fromCached).toList();
+  }
+  return cached.map(_fromCached).toList();
 });
+
+Substitution _fromCached(CachedSubstitution c) => Substitution(
+      id: c.id,
+      timetableEntryId: c.timetableEntryId,
+      date: c.date,
+      type: SubstitutionType.values.firstWhere(
+        (v) => v.name == c.type,
+        orElse: () => SubstitutionType.substitution,
+      ),
+      substituteTeacherId: c.substituteTeacherId,
+      substituteRoomId: c.substituteRoomId,
+      substituteSubjectId: c.substituteSubjectId,
+      note: c.note,
+      originalSubject: c.originalSubject,
+      originalTeacher: c.originalTeacher,
+      originalRoom: c.originalRoom,
+      substituteTeacherName: c.substituteTeacherName,
+      substituteRoomName: c.substituteRoomName,
+      className: c.className,
+      timeSlotLabel: c.timeSlotLabel,
+    );
