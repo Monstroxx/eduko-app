@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/auth_provider.dart';
+import '../config/app_config.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/server_setup_screen.dart';
 import '../../features/home/screens/home_screen.dart';
@@ -30,7 +31,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoggedIn = auth.isAuthenticated;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
+      final hasServer = AppConfig.hasServerUrl;
 
+      // No server URL configured → force setup (except if already on setup page).
+      if (!hasServer && state.matchedLocation != '/auth/setup') {
+        return '/auth/setup';
+      }
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';
       if (isLoggedIn && isAuthRoute) return '/';
       return null;

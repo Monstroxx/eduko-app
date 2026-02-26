@@ -59,6 +59,8 @@ dev_dependencies:
   riverpod_generator: ^2.6.3
   retrofit_generator: ^9.1.6
   drift_dev: ^2.22.1
+  mocktail: ^1.0.4
+  http_mock_adapter: ^0.6.1
 
 flutter:
   uses-material-design: true

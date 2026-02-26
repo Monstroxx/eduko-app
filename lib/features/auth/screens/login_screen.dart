@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -99,6 +100,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final api = ref.read(apiServiceProvider);
+
+      // Health check — catch connection issues before login
+      final reachable = await api.checkHealth();
+      if (!reachable) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Server nicht erreichbar. Bitte Serveradresse in den Einstellungen überprüfen.',
+              ),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+
       final response = await api.login(
         _usernameController.text.trim(),
         _passwordController.text,
@@ -114,14 +132,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         firstName: data['user']['first_name'],
         lastName: data['user']['last_name'],
       );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final msg = _dioErrorMessage(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login fehlgeschlagen: $e')),
+          SnackBar(content: Text('Fehler: $e')),
         );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _dioErrorMessage(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionError:
+      case DioExceptionType.connectionTimeout:
+        return 'Verbindung zum Server fehlgeschlagen. Ist der Server erreichbar?';
+      case DioExceptionType.receiveTimeout:
+        return 'Server antwortet nicht (Timeout).';
+      case DioExceptionType.badResponse:
+        final status = e.response?.statusCode;
+        if (status == 401) return 'Benutzername oder Passwort falsch.';
+        if (status == 403) return 'Zugriff verweigert.';
+        if (status != null && status >= 500) return 'Serverfehler ($status). Bitte später erneut versuchen.';
+        return 'Serverfehler: ${e.response?.data ?? e.message}';
+      default:
+        return 'Netzwerkfehler: ${e.message}';
     }
   }
 

@@ -13,6 +13,28 @@ class ApiService {
 
   ApiService(this._dio);
 
+  // ── Health ─────────────────────────────────────────────
+
+  /// Pings /health on the same host (strips /api/v1 suffix).
+  /// Returns true if the server responds with status 200.
+  Future<bool> checkHealth() async {
+    try {
+      final baseUrl = _dio.options.baseUrl;
+      // Build health URL: replace /api/v1 with /health
+      final healthUrl = baseUrl.replaceAll(RegExp(r'/api/v1/?$'), '/health');
+      final response = await _dio.get(
+        healthUrl,
+        options: Options(
+          sendTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── Auth ────────────────────────────────────────────────
 
   Future<Response> login(String username, String password, String schoolId) =>
