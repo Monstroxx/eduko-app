@@ -10,6 +10,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppConfig.init();
 
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('EDUKO_ERROR: ${details.exception}');
+    debugPrint('EDUKO_STACK: ${details.stack}');
+  };
+
   runApp(
     const ProviderScope(
       child: EdukoApp(),

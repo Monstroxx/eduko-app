@@ -123,14 +123,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         '', // school_id — determined by server in single-school mode
       );
 
-      final data = response.data;
+      final raw = response.data;
+      if (raw == null || raw is! Map) {
+        throw StateError('Unexpected response format: ${raw.runtimeType}');
+      }
+      final data = raw as Map<String, dynamic>;
+      final user = data['user'];
+      if (user == null || user is! Map) {
+        throw StateError('Missing user object in response');
+      }
+      final userData = user as Map<String, dynamic>;
+
       await ref.read(authProvider.notifier).login(
-        token: data['token'],
-        userId: data['user']['id'],
-        schoolId: data['user']['school_id'],
-        role: data['user']['role'],
-        firstName: data['user']['first_name'],
-        lastName: data['user']['last_name'],
+        token: (data['token'] as String?) ?? '',
+        userId: (userData['id'] as String?) ?? '',
+        schoolId: (userData['school_id'] as String?) ?? '',
+        role: (userData['role'] as String?) ?? 'student',
+        firstName: (userData['first_name'] as String?) ?? '',
+        lastName: (userData['last_name'] as String?) ?? '',
       );
     } on DioException catch (e) {
       if (!mounted) return;
@@ -138,10 +148,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg)),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('LOGIN_ERROR: $e\n$stack');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fehler: $e')),
+          SnackBar(
+            content: Text('${e.runtimeType}: $e'),
+            duration: const Duration(seconds: 8),
+          ),
         );
       }
     } finally {

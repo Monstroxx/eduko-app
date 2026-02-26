@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../storage/auth_storage.dart';
 
 final authTokenProvider = StateProvider<String?>((ref) => null);
 
@@ -57,32 +57,35 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref ref;
-  static const _storage = FlutterSecureStorage();
 
   AuthNotifier(this.ref) : super(const AuthState()) {
     _loadSavedAuth();
   }
 
   Future<void> _loadSavedAuth() async {
-    final token = await _storage.read(key: 'auth_token');
-    final userId = await _storage.read(key: 'user_id');
-    final schoolId = await _storage.read(key: 'school_id');
-    final role = await _storage.read(key: 'role');
-    final firstName = await _storage.read(key: 'first_name');
-    final lastName = await _storage.read(key: 'last_name');
+    try {
+      final token = await AuthStorage.read('auth_token');
+      final userId = await AuthStorage.read('user_id');
+      final schoolId = await AuthStorage.read('school_id');
+      final role = await AuthStorage.read('role');
+      final firstName = await AuthStorage.read('first_name');
+      final lastName = await AuthStorage.read('last_name');
 
-    if (token != null) {
-      state = AuthState(
-        status: AuthStatus.authenticated,
-        token: token,
-        userId: userId,
-        schoolId: schoolId,
-        role: role,
-        firstName: firstName,
-        lastName: lastName,
-      );
-      ref.read(authTokenProvider.notifier).state = token;
-    } else {
+      if (token != null) {
+        state = AuthState(
+          status: AuthStatus.authenticated,
+          token: token,
+          userId: userId,
+          schoolId: schoolId,
+          role: role,
+          firstName: firstName,
+          lastName: lastName,
+        );
+        ref.read(authTokenProvider.notifier).state = token;
+      } else {
+        state = const AuthState(status: AuthStatus.unauthenticated);
+      }
+    } catch (e) {
       state = const AuthState(status: AuthStatus.unauthenticated);
     }
   }
@@ -95,12 +98,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String firstName,
     required String lastName,
   }) async {
-    await _storage.write(key: 'auth_token', value: token);
-    await _storage.write(key: 'user_id', value: userId);
-    await _storage.write(key: 'school_id', value: schoolId);
-    await _storage.write(key: 'role', value: role);
-    await _storage.write(key: 'first_name', value: firstName);
-    await _storage.write(key: 'last_name', value: lastName);
+    await AuthStorage.write('auth_token', token);
+    await AuthStorage.write('user_id', userId);
+    await AuthStorage.write('school_id', schoolId);
+    await AuthStorage.write('role', role);
+    await AuthStorage.write('first_name', firstName);
+    await AuthStorage.write('last_name', lastName);
 
     ref.read(authTokenProvider.notifier).state = token;
 
@@ -116,7 +119,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await _storage.deleteAll();
+    await AuthStorage.deleteAll();
     ref.read(authTokenProvider.notifier).state = null;
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
