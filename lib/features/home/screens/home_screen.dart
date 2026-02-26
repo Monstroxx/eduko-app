@@ -71,6 +71,14 @@ class HomeScreen extends ConsumerWidget {
       label: 'Entschuldigung',
     ));
 
+    if (role == 'admin') {
+      items.add(const NavigationDestination(
+        icon: Icon(Icons.admin_panel_settings_outlined),
+        selectedIcon: Icon(Icons.admin_panel_settings),
+        label: 'Admin',
+      ));
+    }
+
     items.add(const NavigationDestination(
       icon: Icon(Icons.person_outline),
       selectedIcon: Icon(Icons.person),
@@ -89,7 +97,9 @@ class HomeScreen extends ConsumerWidget {
   List<String> _routes(String role) {
     final r = ['/', '/timetable', '/substitutions'];
     if (role == 'teacher' || role == 'admin') r.add('/attendance');
-    r.addAll(['/excuses', '/profile']);
+    r.add('/excuses');
+    if (role == 'admin') r.add('/admin');
+    r.add('/profile');
     return r;
   }
 

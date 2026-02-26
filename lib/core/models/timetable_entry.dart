@@ -19,14 +19,17 @@ class TimetableEntry {
   @JsonKey(name: 'day_of_week') final int dayOfWeek;
   @JsonKey(name: 'week_type') final WeekType weekType;
 
-  // Enriched fields (populated by API joins)
-  final String? subjectName;
-  final String? subjectAbbreviation;
-  final String? subjectColor;
-  final String? teacherName;
-  final String? teacherAbbreviation;
-  final String? roomName;
-  final String? className;
+  // Enriched fields (joined in by the API — all snake_case from backend)
+  @JsonKey(name: 'subject_name')        final String? subjectName;
+  @JsonKey(name: 'subject_abbreviation') final String? subjectAbbreviation;
+  @JsonKey(name: 'subject_color')       final String? subjectColor;
+  @JsonKey(name: 'teacher_name')        final String? teacherName;
+  @JsonKey(name: 'teacher_abbreviation') final String? teacherAbbreviation;
+  @JsonKey(name: 'room_name')           final String? roomName;
+  @JsonKey(name: 'class_name')          final String? className;
+  @JsonKey(name: 'time_slot_label')     final String? timeSlotLabel;
+  @JsonKey(name: 'time_slot_start')     final String? timeSlotStart;
+  @JsonKey(name: 'time_slot_end')       final String? timeSlotEnd;
 
   const TimetableEntry({
     required this.id,
@@ -44,6 +47,9 @@ class TimetableEntry {
     this.teacherAbbreviation,
     this.roomName,
     this.className,
+    this.timeSlotLabel,
+    this.timeSlotStart,
+    this.timeSlotEnd,
   });
 
   factory TimetableEntry.fromJson(Map<String, dynamic> json) =>

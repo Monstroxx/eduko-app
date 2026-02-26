@@ -18,6 +18,7 @@ import '../../features/appointments/screens/appointments_screen.dart';
 import '../../features/substitutions/screens/substitutions_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/admin/screens/admin_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -32,13 +33,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = auth.isAuthenticated;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
       final hasServer = AppConfig.hasServerUrl;
+      final role = auth.role ?? 'student';
+      final loc = state.matchedLocation;
 
       // No server URL configured → force setup (except if already on setup page).
-      if (!hasServer && state.matchedLocation != '/auth/setup') {
-        return '/auth/setup';
-      }
+      if (!hasServer && loc != '/auth/setup') return '/auth/setup';
       if (!isLoggedIn && !isAuthRoute) return '/auth/login';
       if (isLoggedIn && isAuthRoute) return '/';
+
+      // Role-based access guards
+      if (loc == '/attendance' && role == 'student') return '/';
+      if (loc == '/excuses/create' && role != 'student') return '/excuses';
+      if (loc.startsWith('/admin') && role != 'admin') return '/';
+
       return null;
     },
     routes: [
@@ -98,6 +105,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/appointments',
             builder: (context, state) => const AppointmentsScreen(),
+          ),
+          GoRoute(
+            path: '/admin',
+            builder: (context, state) => const AdminScreen(),
           ),
           GoRoute(
             path: '/profile',

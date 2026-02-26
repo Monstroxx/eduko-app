@@ -24,6 +24,9 @@ class CachedTimetableEntries extends Table {
   TextColumn get teacherAbbreviation => text().named('teacher_abbreviation').nullable()();
   TextColumn get roomName => text().named('room_name').nullable()();
   TextColumn get className => text().named('class_name').nullable()();
+  TextColumn get timeSlotLabel => text().named('time_slot_label').nullable()();
+  TextColumn get timeSlotStart => text().named('time_slot_start').nullable()();
+  TextColumn get timeSlotEnd => text().named('time_slot_end').nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -158,7 +161,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(impl.openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      // Dev-friendly: wipe cache on any schema change.
+      // All data re-syncs from backend on next app start.
+      await m.recreateAllViews();
+      for (final table in allTables) {
+        await m.deleteTable(table.actualTableName);
+      }
+      await m.createAll();
+    },
+  );
 
   // ── Sync metadata ──
 

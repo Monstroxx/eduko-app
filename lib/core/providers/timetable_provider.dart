@@ -48,6 +48,9 @@ TimetableEntry _fromCached(CachedTimetableEntry c) => TimetableEntry(
       teacherAbbreviation: c.teacherAbbreviation,
       roomName: c.roomName,
       className: c.className,
+      timeSlotLabel: c.timeSlotLabel,
+      timeSlotStart: c.timeSlotStart,
+      timeSlotEnd: c.timeSlotEnd,
     );
 
 /// Entries grouped by day of week (1=Mon..5=Fri).
@@ -59,7 +62,9 @@ final timetableByDayProvider =
       map.putIfAbsent(e.dayOfWeek, () => []).add(e);
     }
     for (final day in map.values) {
-      day.sort((a, b) => a.timeSlotId.compareTo(b.timeSlotId));
+      // Sort by start time (HH:MM:SS string comparison works here); fall back to ID.
+      day.sort((a, b) => (a.timeSlotStart ?? a.timeSlotId)
+          .compareTo(b.timeSlotStart ?? b.timeSlotId));
     }
     return map;
   });

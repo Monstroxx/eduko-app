@@ -61,6 +61,9 @@ class SyncService {
       teacherAbbreviation: Value(e.teacherAbbreviation),
       roomName: Value(e.roomName),
       className: Value(e.className),
+      timeSlotLabel: Value(e.timeSlotLabel),
+      timeSlotStart: Value(e.timeSlotStart),
+      timeSlotEnd: Value(e.timeSlotEnd),
     )).toList());
   }
 
