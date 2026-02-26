@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/auth/auth_provider.dart';
 import '../../../core/providers/substitution_provider.dart';
 import '../../../core/models/substitution.dart';
 
@@ -10,6 +12,7 @@ class SubstitutionsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
     final date = ref.watch(substitutionDateProvider);
     final subsAsync = ref.watch(substitutionsProvider);
     final theme = Theme.of(context);
@@ -17,6 +20,13 @@ class SubstitutionsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Vertretungsplan')),
+      floatingActionButton: auth.isAdmin
+          ? FloatingActionButton(
+              onPressed: () => context.push('/substitutions/create'),
+              tooltip: 'Vertretung anlegen',
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: Column(
         children: [
           // Date selector

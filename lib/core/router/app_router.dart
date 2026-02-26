@@ -19,6 +19,7 @@ import '../../features/substitutions/screens/substitutions_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/admin/screens/admin_screen.dart';
+import '../../features/substitutions/screens/create_substitution_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -43,6 +44,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Role-based access guards
       if (loc == '/attendance' && role == 'student') return '/';
+      if (loc == '/substitutions/create' && role != 'admin') return '/substitutions';
       if (loc == '/excuses/create' && role != 'student') return '/excuses';
       if (loc.startsWith('/admin') && role != 'admin') return '/';
 
@@ -75,6 +77,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/substitutions',
             builder: (context, state) => const SubstitutionsScreen(),
+            routes: [
+              GoRoute(
+                path: 'create',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => const CreateSubstitutionScreen(),
+              ),
+            ],
           ),
           GoRoute(
             path: '/attendance',

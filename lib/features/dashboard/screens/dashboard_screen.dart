@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/models/substitution.dart';
 import '../../../core/models/excuse.dart';
+import '../../../core/models/timetable_entry.dart';
 import '../../../core/providers/timetable_provider.dart';
 import '../../../core/providers/substitution_provider.dart';
 import '../../../core/providers/excuse_provider.dart';
@@ -111,30 +112,80 @@ class _NextLessonCard extends ConsumerWidget {
 
     return timetableAsync.when(
       data: (byDay) {
+        if (now.weekday > 5) {
+          return const _DashCard(
+            icon: Icons.weekend,
+            iconColor: Colors.green,
+            title: 'Wochenende 🎉',
+            subtitle: 'Kein Unterricht',
+          );
+        }
         final todayEntries = byDay[now.weekday] ?? [];
         if (todayEntries.isEmpty) {
-          return _DashCard(
+          return const _DashCard(
             icon: Icons.free_breakfast,
             iconColor: Colors.green,
             title: 'Kein Unterricht heute',
-            subtitle: now.weekday > 5 ? 'Wochenende! 🎉' : 'Unterrichtsfrei',
+            subtitle: 'Unterrichtsfrei',
           );
         }
 
-        // Show first entry as "next" (simplified — proper version would check time)
-        final next = todayEntries.first;
+        // Find next upcoming lesson by comparing current time to timeSlotStart.
+        final nowMinutes = now.hour * 60 + now.minute;
+        TimetableEntry? next;
+        for (final e in todayEntries) {
+          if (e.timeSlotStart != null) {
+            final parts = e.timeSlotStart!.split(':');
+            final slotMinutes = int.parse(parts[0]) * 60 + int.parse(parts[1]);
+            // Show current or upcoming lesson (started ≤30 min ago or in future)
+            if (slotMinutes >= nowMinutes - 30) {
+              next = e;
+              break;
+            }
+          }
+        }
+        next ??= todayEntries.last; // fallback: last lesson of day
+
+        final allDone = todayEntries.every((e) {
+          if (e.timeSlotStart == null) return false;
+          final parts = e.timeSlotStart!.split(':');
+          final slotMinutes = int.parse(parts[0]) * 60 + int.parse(parts[1]);
+          return slotMinutes < nowMinutes - 30;
+        });
+
+        if (allDone) {
+          return _DashCard(
+            icon: Icons.done_all,
+            iconColor: Colors.green,
+            title: 'Unterricht beendet',
+            subtitle: '${todayEntries.length} Stunden heute',
+            onTap: () => GoRouter.of(context).go('/timetable'),
+          );
+        }
+
         final color = next.subjectColor != null
-            ? Color(int.parse('FF${next.subjectColor!.replaceFirst('#', '')}', radix: 16))
+            ? Color(int.parse(
+                'FF${next.subjectColor!.replaceFirst('#', '')}',
+                radix: 16))
             : theme.colorScheme.primary;
+
+        final timeLabel = next.timeSlotLabel != null
+            ? '${next.timeSlotLabel} · ${next.timeSlotStart?.substring(0, 5) ?? ''}'
+            : next.timeSlotStart?.substring(0, 5) ?? '';
 
         return _DashCard(
           icon: Icons.schedule,
           iconColor: color,
           title: next.subjectName ?? next.subjectAbbreviation ?? 'Nächste Stunde',
-          subtitle: '${next.teacherName ?? ''} · ${next.roomName ?? ''}',
+          subtitle: [
+            if (next.teacherName != null) next.teacherName!,
+            if (next.roomName != null) next.roomName!,
+            if (timeLabel.isNotEmpty) timeLabel,
+          ].join(' · '),
           trailing: Text(
-            '${todayEntries.length} Std. heute',
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline),
+            '${todayEntries.length} Std.',
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: theme.colorScheme.outline),
           ),
           onTap: () => GoRouter.of(context).go('/timetable'),
         );

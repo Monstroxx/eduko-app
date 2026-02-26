@@ -65,6 +65,15 @@ class ApiService {
         if (to != null) 'to': to,
       });
 
+  Future<Response> createSubstitution(Map<String, dynamic> data) =>
+      _dio.post('/substitutions', data: data);
+
+  Future<Response> updateSubstitution(String id, Map<String, dynamic> data) =>
+      _dio.put('/substitutions/$id', data: data);
+
+  Future<Response> deleteSubstitution(String id) =>
+      _dio.delete('/substitutions/$id');
+
   // ── Attendance ─────────────────────────────────────────
 
   Future<Response> recordAttendance(Map<String, dynamic> data) =>
