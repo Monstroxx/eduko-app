@@ -26,6 +26,24 @@ final substitutionsProvider =
   return cached.map(_fromCached).toList();
 });
 
+/// Substitutions for a specific date as a map: timetableEntryId → Substitution.
+/// Used by timetable views to overlay substitution info on entries.
+final substitutionMapByDateProvider = FutureProvider.autoDispose
+    .family<Map<String, Substitution>, DateTime>((ref, date) async {
+  final db = ref.watch(appDatabaseProvider);
+  final sync = ref.watch(syncServiceProvider);
+
+  sync.syncSubstitutions(date: date).ignore();
+
+  final cached = await db.getSubstitutionsByDate(date);
+  if (cached.isEmpty) {
+    await sync.syncSubstitutions(date: date, force: true);
+    final fresh = await db.getSubstitutionsByDate(date);
+    return {for (final c in fresh) c.timetableEntryId: _fromCached(c)};
+  }
+  return {for (final c in cached) c.timetableEntryId: _fromCached(c)};
+});
+
 Substitution _fromCached(CachedSubstitution c) => Substitution(
       id: c.id,
       timetableEntryId: c.timetableEntryId,

@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/models/substitution.dart';
 import '../../../core/models/timetable_entry.dart';
 import '../../../core/providers/reference_data_provider.dart';
+import '../../../core/providers/substitution_provider.dart';
 import '../../../core/providers/timetable_provider.dart';
 
 // ── Helpers ────────────────────────────────────────────────
@@ -135,7 +137,10 @@ class _TimetableDayViewState extends ConsumerState<TimetableDayView> {
                   ),
                 );
               }
-              return _buildList(entries);
+              final subMap = ref
+                  .watch(substitutionMapByDateProvider(widget.selectedDate))
+                  .valueOrNull ?? {};
+              return _buildList(entries, subMap);
             },
             loading: () =>
                 const Center(child: CircularProgressIndicator()),
@@ -161,45 +166,44 @@ class _TimetableDayViewState extends ConsumerState<TimetableDayView> {
     );
   }
 
-  Widget _buildList(List<TimetableEntry> entries) {
+  Widget _buildList(
+      List<TimetableEntry> entries, Map<String, Substitution> subMap) {
     if (!_isToday) {
-      // Not today: plain list, no NOW line, no graying.
       return ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         itemCount: entries.length,
-        itemBuilder: (_, i) =>
-            _TimetableEntryCard(entry: entries[i], status: _Status.upcoming),
+        itemBuilder: (_, i) => _TimetableEntryCard(
+          entry: entries[i],
+          status: _Status.upcoming,
+          substitution: subMap[entries[i].id],
+        ),
       );
     }
 
     final nowMin = _now.hour * 60 + _now.minute;
     final statuses = entries.map((e) => _entryStatus(e, nowMin)).toList();
 
-    // Find insertion point for NOW line:
-    // Insert after the last 'past' entry and before the first 'current'/'upcoming'.
-    int nowInsertAfter = -1; // insert before index 0 if all upcoming
+    int nowInsertAfter = -1;
     for (int i = 0; i < statuses.length; i++) {
       if (statuses[i] == _Status.past) nowInsertAfter = i;
     }
-    // Only show line if there's at least one past AND one non-past entry,
-    // OR if school hasn't started yet (nowInsertAfter == -1 and time < first start).
     final hasNonPast = statuses.any((s) => s != _Status.past);
     final showNowLine = hasNonPast &&
         (nowInsertAfter >= 0 ||
             nowMin < _toMinutes(entries.first.timeSlotStart));
 
-    // Build flat items list: entries interleaved with optional NOW marker.
     final items = <Widget>[];
 
-    // Now line before everything (school hasn't started yet)
     if (showNowLine && nowInsertAfter == -1) {
       items.add(_NowLine(time: _now));
     }
 
     for (int i = 0; i < entries.length; i++) {
       items.add(_TimetableEntryCard(
-          entry: entries[i], status: statuses[i]));
-      // Insert NOW line after last past entry
+        entry: entries[i],
+        status: statuses[i],
+        substitution: subMap[entries[i].id],
+      ));
       if (showNowLine && i == nowInsertAfter) {
         items.add(_NowLine(time: _now));
       }
@@ -257,8 +261,13 @@ class _NowLine extends StatelessWidget {
 class _TimetableEntryCard extends ConsumerWidget {
   final TimetableEntry entry;
   final _Status status;
+  final Substitution? substitution;
 
-  const _TimetableEntryCard({required this.entry, required this.status});
+  const _TimetableEntryCard({
+    required this.entry,
+    required this.status,
+    this.substitution,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -271,27 +280,39 @@ class _TimetableEntryCard extends ConsumerWidget {
             radix: 16))
         : theme.colorScheme.primaryContainer;
 
-    // Past: reduce opacity to ~55% — colors remain but look faded.
-    final opacity = status == _Status.past ? 0.55 : 1.0;
+    // Substitution-based overrides
+    final sub = substitution;
+    final isCancelled = sub?.type == SubstitutionType.cancellation;
+    final barColor = sub == null
+        ? subjectColor
+        : switch (sub.type) {
+            SubstitutionType.cancellation => Colors.grey,
+            SubstitutionType.substitution => Colors.orange,
+            SubstitutionType.roomChange => Colors.teal,
+            SubstitutionType.extraLesson => Colors.purple,
+          };
+
+    // Past OR cancelled: reduce opacity.
+    final opacity = (status == _Status.past || isCancelled) ? 0.55 : 1.0;
 
     Widget card = Card(
       margin: const EdgeInsets.only(bottom: 8),
       // Current lesson: subtle elevation + outline for emphasis.
       elevation: status == _Status.current ? 4 : 1,
-      shape: status == _Status.current
+      shape: status == _Status.current || sub != null
           ? RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: subjectColor, width: 1.5),
+              side: BorderSide(color: barColor, width: sub != null ? 1.5 : 1.5),
             )
           : null,
       child: IntrinsicHeight(
         child: Row(
           children: [
-            // Color bar
+            // Color bar (substitution overrides subject color)
             Container(
               width: 6,
               decoration: BoxDecoration(
-                color: subjectColor,
+                color: barColor,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(12),
                   bottomLeft: Radius.circular(12),
@@ -346,11 +367,18 @@ class _TimetableEntryCard extends ConsumerWidget {
                                 'Fach',
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w600,
+                              decoration: isCancelled
+                                  ? TextDecoration.lineThrough
+                                  : null,
                             ),
                           ),
                         ),
-                        if (status == _Status.current)
+                        // Substitution badge
+                        if (sub != null) _SubBadge(type: sub.type),
+                        // "Jetzt" badge (only if not cancelled)
+                        if (status == _Status.current && !isCancelled)
                           Container(
+                            margin: const EdgeInsets.only(left: 4),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
@@ -375,18 +403,33 @@ class _TimetableEntryCard extends ConsumerWidget {
                             color: theme.colorScheme.outline),
                         const SizedBox(width: 4),
                         Text(
-                          entry.teacherName ??
+                          // Show substitute teacher if available
+                          sub?.substituteTeacherName ??
+                              entry.teacherName ??
                               entry.teacherAbbreviation ??
                               '–',
-                          style: theme.textTheme.bodySmall,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: sub?.substituteTeacherName != null
+                                ? Colors.orange.shade700
+                                : null,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Icon(Icons.room_outlined,
                             size: 14,
                             color: theme.colorScheme.outline),
                         const SizedBox(width: 4),
-                        Text(entry.roomName ?? '–',
-                            style: theme.textTheme.bodySmall),
+                        Text(
+                          // Show new room if room change
+                          sub?.substituteRoomName ??
+                              entry.roomName ??
+                              '–',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: sub?.substituteRoomName != null
+                                ? Colors.teal.shade700
+                                : null,
+                          ),
+                        ),
                       ],
                     ),
                     if (entry.weekType != WeekType.all)
@@ -410,5 +453,38 @@ class _TimetableEntryCard extends ConsumerWidget {
     );
 
     return Opacity(opacity: opacity, child: card);
+  }
+}
+
+// ── Substitution badge ─────────────────────────────────────
+
+class _SubBadge extends StatelessWidget {
+  final SubstitutionType type;
+  const _SubBadge({required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color) = switch (type) {
+      SubstitutionType.cancellation => ('Entfall', Colors.red),
+      SubstitutionType.substitution => ('Vertretung', Colors.orange),
+      SubstitutionType.roomChange => ('Raumänd.', Colors.teal),
+      SubstitutionType.extraLesson => ('Zusatz', Colors.purple),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withAlpha(30),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withAlpha(80)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color.shade700,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 }

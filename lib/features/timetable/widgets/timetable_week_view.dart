@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/models/substitution.dart';
 import '../../../core/models/timetable_entry.dart';
 import '../../../core/providers/reference_data_provider.dart';
+import '../../../core/providers/substitution_provider.dart';
 import '../../../core/providers/timetable_provider.dart';
 
 // ── Helpers ────────────────────────────────────────────────
@@ -76,6 +78,14 @@ class _TimetableWeekViewState extends ConsumerState<TimetableWeekView> {
 
     final dayNames = ['Mo', 'Di', 'Mi', 'Do', 'Fr'];
 
+    // Load substitution maps for all 5 days of the week
+    final subMaps = <int, Map<String, Substitution>>{
+      for (int d = 0; d < 5; d++)
+        d + 1: ref
+            .watch(substitutionMapByDateProvider(monday.add(Duration(days: d))))
+            .valueOrNull ?? const {},
+    };
+
     return timetableAsync.when(
       data: (byDay) => timeSlotsAsync.when(
         data: (timeSlots) {
@@ -119,6 +129,7 @@ class _TimetableWeekViewState extends ConsumerState<TimetableWeekView> {
                   _buildSlotRow(
                     context, theme, sortedSlots[si], byDay,
                     si == currentSlotIndex, isCurrentWeek, todayWeekday, nowMin,
+                    subMaps,
                   ),
                 ],
               ],
@@ -196,6 +207,7 @@ class _TimetableWeekViewState extends ConsumerState<TimetableWeekView> {
     bool isCurrentWeek,
     int todayWeekday,
     int nowMin,
+    Map<int, Map<String, Substitution>> subMaps,
   ) {
     final rowBg = isCurrentSlot
         ? theme.colorScheme.primaryContainer.withAlpha(40)
@@ -249,19 +261,25 @@ class _TimetableWeekViewState extends ConsumerState<TimetableWeekView> {
                         color: theme.colorScheme.outlineVariant, width: 0.5),
                   ),
                 ),
-                child: _WeekCell(
-                  entries: (byDay[d] ?? [])
+                child: Builder(builder: (context) {
+                  final cellEntries = (byDay[d] ?? [])
                       .where((e) => e.timeSlotId == slot.id)
-                      .toList(),
-                  slotStatus: _slotStatus(
-                    slot.startTime,
-                    slot.endTime,
-                    nowMin,
-                    isCurrentWeek && todayWeekday == d,
-                  ),
-                  isCurrentDay:
+                      .toList();
+                  final sub = cellEntries.isNotEmpty
+                      ? (subMaps[d] ?? {})[cellEntries.first.id]
+                      : null;
+                  return _WeekCell(
+                    entries: cellEntries,
+                    slotStatus: _slotStatus(
+                      slot.startTime,
+                      slot.endTime,
+                      nowMin,
                       isCurrentWeek && todayWeekday == d,
-                ),
+                    ),
+                    isCurrentDay: isCurrentWeek && todayWeekday == d,
+                    substitution: sub,
+                  );
+                }),
               ),
             ),
         ],
@@ -373,11 +391,13 @@ class _WeekCell extends StatelessWidget {
   final List<TimetableEntry> entries;
   final _Status slotStatus;
   final bool isCurrentDay;
+  final Substitution? substitution;
 
   const _WeekCell({
     required this.entries,
     required this.slotStatus,
     required this.isCurrentDay,
+    this.substitution,
   });
 
   @override
@@ -390,26 +410,51 @@ class _WeekCell extends StatelessWidget {
     }
 
     final entry = entries.first;
-    final color = entry.subjectColor != null
+    final sub = substitution;
+    final isCancelled = sub?.type == SubstitutionType.cancellation;
+
+    final subjectColor = entry.subjectColor != null
         ? Color(int.parse(
             'FF${entry.subjectColor!.replaceFirst('#', '')}',
             radix: 16))
         : theme.colorScheme.primaryContainer;
 
-    // Past: reduce opacity on cell content — keep colors faded
+    final barColor = sub == null
+        ? subjectColor
+        : switch (sub.type) {
+            SubstitutionType.cancellation => Colors.grey,
+            SubstitutionType.substitution => Colors.orange,
+            SubstitutionType.roomChange => Colors.teal,
+            SubstitutionType.extraLesson => Colors.purple,
+          };
+
+    // Past / cancelled: reduce opacity
     final isPast = slotStatus == _Status.past;
     final isCurrent = slotStatus == _Status.current;
+    final opacity = (isPast || isCancelled) ? 0.55 : 1.0;
+
+    // Display text: substitution may override room
+    final displaySubject = entry.subjectAbbreviation ??
+        (entry.subjectName?.isNotEmpty == true
+            ? entry.subjectName!.substring(
+                0,
+                entry.subjectName!.length > 3
+                    ? 3
+                    : entry.subjectName!.length)
+            : '?');
+    final displayRoom =
+        sub?.substituteRoomName ?? entry.roomName;
 
     Widget cell = Container(
       height: height,
       padding: const EdgeInsets.all(2),
       child: Container(
         decoration: BoxDecoration(
-          color: color.withAlpha(isPast ? 25 : 55),
+          color: barColor.withAlpha(isPast ? 25 : 55),
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: isCurrent ? Colors.red : color,
-            width: isCurrent ? 1.5 : 0.5,
+            color: isCurrent ? Colors.red : barColor,
+            width: isCurrent ? 1.5 : sub != null ? 1.5 : 0.5,
           ),
         ),
         padding: const EdgeInsets.all(3),
@@ -417,28 +462,42 @@ class _WeekCell extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              entry.subjectAbbreviation ??
-                  (entry.subjectName?.isNotEmpty == true
-                      ? entry.subjectName!.substring(
-                          0,
-                          entry.subjectName!.length > 3
-                              ? 3
-                              : entry.subjectName!.length)
-                      : '?'),
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 10,
-                color: isCurrent ? Colors.red : null,
-              ),
-              overflow: TextOverflow.ellipsis,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    displaySubject,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                      color: isCurrent ? Colors.red : null,
+                      decoration: isCancelled
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                // Tiny dot indicator for substitution type
+                if (sub != null)
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: barColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
             ),
-            if (entry.roomName != null)
+            if (displayRoom != null)
               Text(
-                entry.roomName!,
+                displayRoom,
                 style: theme.textTheme.labelSmall?.copyWith(
                   fontSize: 8,
-                  color: theme.colorScheme.outline,
+                  color: sub?.substituteRoomName != null
+                      ? Colors.teal.shade700
+                      : theme.colorScheme.outline,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -447,7 +506,6 @@ class _WeekCell extends StatelessWidget {
       ),
     );
 
-    // Past cells: reduce opacity to ~55% — colors stay, just dimmed
-    return isPast ? Opacity(opacity: 0.55, child: cell) : cell;
+    return Opacity(opacity: opacity, child: cell);
   }
 }
